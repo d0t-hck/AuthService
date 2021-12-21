@@ -1,0 +1,24 @@
+POST http://localhost:8000/auth/sign-up/
+Content-Type: application/json
+
+{
+    "email": "test@gmail.com",
+    "first_name": "John",
+    "last_name": "Wick",
+    "password": "qwerty"
+}
+
+###
+
+GET http://localhost:8000/auth/roles/
+Content-Type: application/json
+
+###
+
+POST http://localhost:8000/auth/roles/add/
+Content-Type: application/json
+
+{
+    "role": "User",
+    "desc": "Common user"
+}
