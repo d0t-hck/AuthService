@@ -35,7 +35,6 @@ INSTALLED_APPS = [
     #'django.contrib.messages',
     'django.contrib.staticfiles',
     'authenticator',
-    'bcrypt',
 ]
 
 MIDDLEWARE = [

@@ -8,7 +8,6 @@ import hashlib
 import json
 import base64
 import os
-import bcrypt
 
 # Create your views here.
 
@@ -17,6 +16,11 @@ def get_roles(request):
     if request.method == 'GET':
         roles = serializers.serialize('json', Role.objects.all())
         return HttpResponse(roles, content_type='application/json')
+
+def get_roles(request, id):
+    if request.method == 'GET':
+        role = Role.objects.get(id=id)
+        return JsonResponse(model_to_dict(role))
 
 
 def add_role(request):
@@ -29,24 +33,36 @@ def add_role(request):
 def sign_up(request):
     if request.method == 'POST':
         data = json.loads(request.body.decode('utf-8'))
-        #key = hashlib.pbkdf2_hmac(
-         #   'sha256', data['password'].encode('utf-8'), salt, 1000)
-        #password = (salt+key).hex()
-    #     user = User(email=data['email'], first_name=data['first_name'],
-    #                 last_name=data['last_name'], password=hashed_password, role=Role.objects.get(id=1))
-    #     user.save()
-    # return JsonResponse(model_to_dict(user))
-    #return HttpResponse(base64.b64encode(password.encode('utf-8')), content_type='application/json')
-        key = bcrypt.kdf(data['password'].encode('utf-8'), bcrypt.gensalt(), 32, 1000)
-    #return JsonResponse({'hex-salt': salt.hex(), 'hex-password':key.hex(), 'hex-salt+password':(salt+key).hex()})
-    return HttpResponse(base64.b64encode(key.hex().encode('utf-8')), content_type='application/json')
+        salt = os.urandom(32)
+        key = hashlib.pbkdf2_hmac(
+           'sha256', data['password'].encode('utf-8'), salt, 100000).hex()
+        key = base64.b64encode(key.encode('utf-8')).decode()
+        salt = base64.b64encode(salt.hex().encode('utf-8')).decode()
+        password = salt + key
+        user = User(email=data['email'], first_name=data['first_name'],
+                    last_name=data['last_name'], password=password, role=Role.objects.get(id=1))
+        user.save()
+    return JsonResponse(model_to_dict(user))
 
 
 def sign_in(request):
-    user = User.objects.get(email=request.POST['email'])
-    return JsonResponse(user)
+    if request.method == 'POST':
+        data = json.loads(request.body.decode('utf-8'))
+        user = User.objects.get(email=data['email'])
+        if user is not None:
+            salt = base64.b64decode(user.password[:88].encode('ascii'))
+            new_key = hashlib.pbkdf2_hmac('sha256', data['password'].encode('utf-8'), salt, 100000).decode('ascii')
+            key = base64.b64decode(user.password[88:].encode('ascii')).decode('ascii')
+            return JsonResponse({"new-key":new_key, "key":key})
+        else:
+            return JsonResponse({"404":"user not found"})
 
 
 def get_users(request):
     users = serializers.serialize('json', User.objects.all())
     return HttpResponse(users, content_type='application/json')
+
+def get_users(request, id):
+    user = User.objects.get(id=id)
+    return JsonResponse(model_to_dict(user))
+
