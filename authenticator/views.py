@@ -1,9 +1,13 @@
 from django.http.response import HttpResponse, JsonResponse
 from django.shortcuts import render
+from rest_framework.serializers import Serializer
+
+from authenticator.serializers import UserSerializer
 from .models.user import User
 from .models.role import Role
 from django.core import serializers
 from django.forms.models import model_to_dict
+from rest_framework.parsers import JSONParser
 import hashlib
 import json
 import base64
@@ -17,7 +21,8 @@ def get_roles(request):
         roles = serializers.serialize('json', Role.objects.all())
         return HttpResponse(roles, content_type='application/json')
 
-def get_roles(request, id):
+
+def get_role(request, id):
     if request.method == 'GET':
         role = Role.objects.get(id=id)
         return JsonResponse(model_to_dict(role))
@@ -35,7 +40,7 @@ def sign_up(request):
         data = json.loads(request.body.decode('utf-8'))
         salt = os.urandom(32)
         key = hashlib.pbkdf2_hmac(
-           'sha256', data['password'].encode('utf-8'), salt, 100000).hex()
+            'sha256', data['password'].encode('utf-8'), salt, 100000).hex()
         key = base64.b64encode(key.encode('utf-8')).decode()
         salt = base64.b64encode(salt.hex().encode('utf-8')).decode()
         password = salt + key
@@ -51,18 +56,59 @@ def sign_in(request):
         user = User.objects.get(email=data['email'])
         if user is not None:
             salt = base64.b64decode(user.password[:88].encode('ascii'))
-            new_key = hashlib.pbkdf2_hmac('sha256', data['password'].encode('utf-8'), salt, 100000).decode('ascii')
-            key = base64.b64decode(user.password[88:].encode('ascii')).decode('ascii')
-            return JsonResponse({"new-key":new_key, "key":key})
+            new_key = hashlib.pbkdf2_hmac('sha256', data['password'].encode(
+                'utf-8'), salt, 100000).decode('ascii')
+            key = base64.b64decode(
+                user.password[88:].encode('ascii')).decode('ascii')
+            return JsonResponse({"new-key": new_key, "key": key})
         else:
-            return JsonResponse({"404":"user not found"})
+            return JsonResponse({"404": "user not found"})
 
 
 def get_users(request):
     users = serializers.serialize('json', User.objects.all())
     return HttpResponse(users, content_type='application/json')
 
+
 def get_users(request, id):
     user = User.objects.get(id=id)
     return JsonResponse(model_to_dict(user))
 
+def get_users(request, email):
+    user = User.objects.get(email=email)
+    return JsonResponse(model_to_dict(user))
+
+def user_list(request):
+    if request.method == 'GET':
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return JsonResponse(serializer.data, safe=False)
+    elif request.method == 'POST':
+        data = JSONParser().parse(request)
+        serializer = UserSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data, status=201)
+        return JsonResponse(serializer.errors, status=400)
+
+def user_detail(request, id):
+    try:
+        user = User.objects.get(id=id)
+    except User.DoesNotExist:
+        return HttpResponse(status=404)
+
+    if request.method == 'GET':
+        serializer = UserSerializer(user)
+        return JsonResponse(serializer.data)
+
+    elif request.method == 'PUT':
+        data = JSONParser().parse(request)
+        serializer = UserSerializer(user, data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data)
+        return JsonResponse(serializer.errors, status=400)
+
+    elif request.method == 'DELETE':
+        user.delete()
+        return HttpResponse(status=204)
