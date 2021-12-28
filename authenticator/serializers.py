@@ -7,6 +7,13 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'email', 'first_name', 'last_name', 'role']
 
+class PostUserSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    email = serializers.EmailField(required=True)
+    first_name = serializers.CharField(required=True, max_length=50)
+    lasst_name = serializers.CharField(required=True, max_length=50)
+    role = serializers.IntegerField(default=1)
+
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role

@@ -8,6 +8,7 @@ from .models.role import Role
 from django.core import serializers
 from django.forms.models import model_to_dict
 from rest_framework.parsers import JSONParser
+from . import hasher
 import hashlib
 import json
 import base64
@@ -38,14 +39,9 @@ def add_role(request):
 def sign_up(request):
     if request.method == 'POST':
         data = json.loads(request.body.decode('utf-8'))
-        salt = os.urandom(32)
-        key = hashlib.pbkdf2_hmac(
-            'sha256', data['password'].encode('utf-8'), salt, 100000).hex()
-        key = base64.b64encode(key.encode('utf-8')).decode()
-        salt = base64.b64encode(salt.hex().encode('utf-8')).decode()
-        password = salt + key
+        encoded = hasher.hash_password(data['password'])
         user = User(email=data['email'], first_name=data['first_name'],
-                    last_name=data['last_name'], password=password, role=Role.objects.get(id=1))
+                    last_name=data['last_name'], password=encoded, role=Role.objects.get(id=1))
         user.save()
     return JsonResponse(model_to_dict(user))
 
@@ -53,6 +49,15 @@ def sign_up(request):
 def sign_in(request):
     if request.method == 'POST':
         data = json.loads(request.body.decode('utf-8'))
+        try:
+            user = User.objects.get(email=data['email'])
+        except User.DoesNotExist:
+            return HttpResponse(status=404)
+        if hasher.check_password(data['password'],user.password):
+            return JsonResponse(model_to_dict(user))
+        else:
+            return HttpResponse(status=401)
+
         user = User.objects.get(email=data['email'])
         if user is not None:
             salt = base64.b64decode(user.password[:88].encode('ascii'))
