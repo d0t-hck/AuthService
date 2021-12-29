@@ -12,4 +12,5 @@ urlpatterns = [
     #path('users/<int:id>/', views.get_users),
     path('users/<int:id>/', views.user_detail),
     path('users/<str:email>/', views.get_users),
+    path('token', views.refresh_token)
 ]

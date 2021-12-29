@@ -5,6 +5,7 @@ from rest_framework.serializers import Serializer
 from authenticator.serializers import UserSerializer
 from .models.user import User
 from .models.role import Role
+from .models.token import Token
 from django.core import serializers
 from django.forms.models import model_to_dict
 from rest_framework.parsers import JSONParser
@@ -12,6 +13,16 @@ from . import hasher
 import json
 
 # Create your views here.
+
+
+def refresh_token(request):
+    if request.method == 'POST':
+        data = json.loads(request.body.decode('utf-8'))
+        payload = hasher.decode_refresh_token(data['refresh_token'])
+        if (payload is None):
+            return HttpResponse(status=401)
+        token = __make_token(payload['user'])
+        return JsonResponse({"access_token": token.access_token, "refresh_token": token.refresh_token})
 
 
 def get_roles(request):
@@ -51,8 +62,18 @@ def sign_in(request):
         except User.DoesNotExist:
             return HttpResponse(status=404)
         new = hasher.check_password(data['password'], user.password)
-        if hasher.check_password(data['password'],user.password):
-            return JsonResponse(model_to_dict(user))
+        if hasher.check_password(data['password'], user.password):
+            # access_token = hasher.encode_access_token(user.email)
+            # refresh_token = hasher.encode_refresh_token(user.email)
+            # try:
+            #     token = Token.objects.get(user=user.id)
+            #     token.access_token = access_token
+            #     token.refresh_token = refresh_token
+            # except Token.DoesNotExist:
+            #     token = Token.objects.create(user = user, access_token = access_token, refresh_token = refresh_token)
+            # token.save()
+            token = __make_token(user)
+            return JsonResponse({"access_token": token.access_token, "refresh_token": token.refresh_token})
         else:
             return HttpResponse(status=401)
 
@@ -66,9 +87,11 @@ def get_users(request, id):
     user = User.objects.get(id=id)
     return JsonResponse(model_to_dict(user))
 
+
 def get_users(request, email):
     user = User.objects.get(email=email)
     return JsonResponse(model_to_dict(user))
+
 
 def user_list(request):
     if request.method == 'GET':
@@ -82,6 +105,7 @@ def user_list(request):
             serializer.save()
             return JsonResponse(serializer.data, status=201)
         return JsonResponse(serializer.errors, status=400)
+
 
 def user_detail(request, id):
     try:
@@ -104,3 +128,16 @@ def user_detail(request, id):
     elif request.method == 'DELETE':
         user.delete()
         return HttpResponse(status=204)
+
+
+def __make_token(user):
+    access_token = hasher.encode_access_token(user.email)
+    refresh_token = hasher.encode_refresh_token(user.email)
+    try:
+        token = Token.objects.get(user=user.id)
+        token.access_token = access_token
+        token.refresh_token = refresh_token
+    except Token.DoesNotExist:
+        token = Token.objects.create(user=user, access_token = access_token, refresh_token = refresh_token)
+    token.save()
+    return token
