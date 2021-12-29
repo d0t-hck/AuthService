@@ -1,13 +1,14 @@
 import base64
 import hashlib
-import os
 import math
+import secrets
 
-from django.utils.crypto import RANDOM_STRING_CHARS, constant_time_compare, get_random_string, pbkdf2
+from django.utils.crypto import constant_time_compare, pbkdf2
+
+RANDOM_STRING_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 def hash_password(password):
-    salt = os.urandom(32)
-    return PBKDF2PasswordHasher().encode(password, salt)
+    return PBKDF2PasswordHasher().encode(password)
 
 def check_password(password, encoded):
     return PBKDF2PasswordHasher().verify(password, encoded)
@@ -17,8 +18,8 @@ class PBKDF2PasswordHasher:
     iterations = 100000
     digest = hashlib.sha256
 
-    def encode(self, password, salt, iterations=None):
-        #self._check_encode_args(password,salt)
+    def encode(self, password, salt=None, iterations=None):
+        salt = salt or self.salt()
         iterations = iterations or self.iterations
         hash = pbkdf2(password, salt, iterations, digest=self.digest)
         hash = base64.b64encode(hash).decode('ascii').strip()
@@ -30,21 +31,15 @@ class PBKDF2PasswordHasher:
         return {
             'algorithm': algorithm,
             'hash': hash,
-            'iterations': iterations,
+            'iterations': int(iterations),
             'salt': salt,
         }
 
     def verify(self, password, encoded):
         decoded = self.decode(encoded)
-        encoded_new = self.encode(password, decoded['salt'], int(decoded['iterations']))
+        encoded_new = self.encode(password, decoded['salt'], decoded['iterations'])
         return constant_time_compare(encoded, encoded_new)
-
-    def _check_encode_args(self, password, salt):
-        if password is None:
-            raise TypeError('password must be provided.')
-        if not salt or '$' in salt:
-            raise ValueError('salt must be provided and canot contain $.')
 
     def salt(self):
         char_count = math.ceil(128 / math.log2(len(RANDOM_STRING_CHARS)))
-        return get_random_string(char_count, allowed_chars=RANDOM_STRING_CHARS)
+        return ''.join(secrets.choice(RANDOM_STRING_CHARS) for i in range(char_count))

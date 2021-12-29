@@ -9,10 +9,7 @@ from django.core import serializers
 from django.forms.models import model_to_dict
 from rest_framework.parsers import JSONParser
 from . import hasher
-import hashlib
 import json
-import base64
-import os
 
 # Create your views here.
 
@@ -53,21 +50,11 @@ def sign_in(request):
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
             return HttpResponse(status=404)
+        new = hasher.check_password(data['password'], user.password)
         if hasher.check_password(data['password'],user.password):
             return JsonResponse(model_to_dict(user))
         else:
             return HttpResponse(status=401)
-
-        user = User.objects.get(email=data['email'])
-        if user is not None:
-            salt = base64.b64decode(user.password[:88].encode('ascii'))
-            new_key = hashlib.pbkdf2_hmac('sha256', data['password'].encode(
-                'utf-8'), salt, 100000).decode('ascii')
-            key = base64.b64decode(
-                user.password[88:].encode('ascii')).decode('ascii')
-            return JsonResponse({"new-key": new_key, "key": key})
-        else:
-            return JsonResponse({"404": "user not found"})
 
 
 def get_users(request):
