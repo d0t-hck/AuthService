@@ -33,7 +33,7 @@ def decode_refresh_token(token):
     try:
         payload = jwt.decode(token, REFRESH_TOKEN_SECRET, algorithms='HS256')
         return payload
-    except (jwt.InvalidSignatureError, jwt.InvalidSignatureError) as e:
+    except (jwt.InvalidSignatureError, jwt.ExpiredSignatureError) as e:
         return None
 
 def hash_password(password):
