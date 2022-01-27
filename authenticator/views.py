@@ -70,7 +70,7 @@ def authorize(request):
             return JsonResponse({}, status=404)
         if hasher.check_password(data['password'], user.password):
             token = __make_token(user)
-            return JsonResponse({"access_token": token.access_token, "refresh_token": token.refresh_token})
+            return JsonResponse({"user": user.email, "role": user.role.name, "access_token": token.access_token, "refresh_token": token.refresh_token})
         else:
             return JsonResponse({}, status=401)
 
