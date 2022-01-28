@@ -30,8 +30,8 @@ def refresh_token(request):
 
 def roles(request):
     if request.method == 'GET':
-        roles = serializers.serialize('json', Role.objects.all())
-        return JsonResponse(RoleSerializer(roles).data, safe=False)
+        roles = RoleSerializer(Role.objects.all(), many=True)
+        return JsonResponse(roles.data, safe=False)
     elif request.method == 'POST':
         data = json.loads(request.body.decode('utf-8'))
         role = Role(name=data['role'], description=data['desc'])
