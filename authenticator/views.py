@@ -139,17 +139,17 @@ def __update_user(user, data):
     if ('email' in data and len(data['email'])!=0):
         __logout(user.email)
         user.email = data['email']
-    if ('first_name' in data and len(data['first_name'])!=0):
+    if ('first_name' in data and data['first_name'] is not None):
         user.first_name = data['first_name']
-    if ('last_name' in data and len(data['last_name'])!=0):
+    if ('last_name' in data and  data['last_name'] is not None):
         user.last_name = data['last_name']
-    if ('role' in data and len(data['role'])!=0):
+    if ('role' in data and data['role'] is not None):
         try:
             new_role = Role.objects.get(id=data['role'])
             user.role = new_role
         except Role.DoesNotExist:
             pass
-    if ('password' in data and len(data['password'])!=0):
+    if ('password' in data and data['password'] is not None):
         if (hasher.check_password(data['password']['old'], user.password)):
             if (data['password']['new'] == data['password']['confirm']):
                 user.password = hasher.hash_password(
