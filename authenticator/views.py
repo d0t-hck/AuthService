@@ -29,6 +29,17 @@ def refresh_token(request):
 
 
 def roles(request):
+    if ('Authorization' in request.headers):
+        token = request.headers.get('Authorization').split(' ')[1]
+        payload = hasher.decode_access_token(token)
+        if payload is None: return JsonResponse({}, status=401)
+        try:
+            tokenUser = User.objects.get(email=payload['user'])
+        except User.DoesNotExist:
+            return JsonResponse({}, status=401)
+        if (tokenUser.role.name != 'Admin'):
+            return JsonResponse({}, status=403)
+    else: return JsonResponse({}, status=401)
     if request.method == 'GET':
         roles = RoleSerializer(Role.objects.all(), many=True)
         return JsonResponse(roles.data, safe=False)
@@ -40,6 +51,17 @@ def roles(request):
 
 
 def role_detail(request, id):
+    if ('Authorization' in request.headers):
+        token = request.headers.get('Authorization').split(' ')[1]
+        payload = hasher.decode_access_token(token)
+        if payload is None: return JsonResponse({}, status=401)
+        try:
+            tokenUser = User.objects.get(email=payload['user'])
+        except User.DoesNotExist:
+            return JsonResponse({}, status=401)
+        if (tokenUser.role.name != 'Admin'):
+            return JsonResponse({}, status=403)
+    else: return JsonResponse({}, status=401)
     try:
         role = Role.objects.get(id=id)
     except Role.DoesNotExist:
@@ -84,6 +106,17 @@ def logout(request):
 
 
 def users(request):
+    if ('Authorization' in request.headers):
+        token = request.headers.get('Authorization').split(' ')[1]
+        payload = hasher.decode_access_token(token)
+        if payload is None: return JsonResponse({}, status=401)
+        try:
+            tokenUser = User.objects.get(email=payload['user'])
+        except User.DoesNotExist:
+            return JsonResponse({}, status=401)
+        if (tokenUser.role.name != 'Admin'):
+            return JsonResponse({}, status=403)
+    else: return JsonResponse({}, status=401)
     if request.method == 'GET':
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
@@ -98,10 +131,28 @@ def users(request):
 
 
 def user_detail(request, email):
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        return JsonResponse({}, status=404)
+    user = None
+    if ('Authorization' in request.headers):
+        token = request.headers.get('Authorization').split(' ')[1]
+        payload = hasher.decode_access_token(token)
+        if payload is None: return JsonResponse({}, status=401)
+        try:
+            tokenUser = User.objects.get(email=payload['user'])
+        except User.DoesNotExist:
+            return JsonResponse({}, status=401)
+        
+        if (payload['user'] != email):
+            if(tokenUser.role.name != 'Admin'):
+                return JsonResponse({}, status=403)
+    else: return JsonResponse({}, status=401)
+
+    if (email == tokenUser.email):
+        user = tokenUser
+    else:
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse({}, status=404)
 
     if request.method == 'GET':
         serializer = UserSerializer(user)

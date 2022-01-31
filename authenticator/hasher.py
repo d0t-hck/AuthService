@@ -36,6 +36,13 @@ def decode_refresh_token(token):
     except (jwt.InvalidSignatureError, jwt.ExpiredSignatureError) as e:
         return None
 
+def decode_access_token(token):
+    try:
+        payload = jwt.decode(token, SECRET, algorithms='HS256')
+        return payload
+    except (jwt.InvalidSignatureError, jwt.ExpiredSignatureError) as e:
+        return None
+
 def hash_password(password):
     return PBKDF2PasswordHasher().encode(password)
 
